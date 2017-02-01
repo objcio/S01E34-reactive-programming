@@ -47,38 +47,38 @@ class ViewController: UIViewController {
         countryPicker.delegate = self.countriesDataSource
         
         let priceSignal = priceSlider.rx.value
+            .asDriver()
             .map { floor(Double($0)) }
             
         priceSignal
             .map { "\($0) USD" }
-            .bindTo(priceLabel.rx.text)
+            .drive(priceLabel.rx.text)
             .addDisposableTo(disposeBag)
         
-        let vatSignal = countriesDataSource.selectedIndex.asObservable()
         let countriesDataSource = self.countriesDataSource
         let webservice = self.webservice
+        let vatSignal = countriesDataSource.selectedIndex.asDriver()
             .distinctUntilChanged()
-            }.shareReplay(1)
             .map { index in
                 countriesDataSource.countries[index].lowercased()
             }.flatMap { country in
                 webservice.load(vat(country: country)).map { Optional.some($0) }.startWith(nil)
+                    .asDriver(onErrorJustReturn: nil)
+            }
         
         vatSignal
             .map { vat in
                 vat.map { "\($0) %" } ?? "..."
             }
-            .asDriver(onErrorJustReturn: "")
             .drive(vatLabel.rx.text)
             .addDisposableTo(disposeBag)
         
-        Observable.combineLatest(vatSignal, priceSignal) { vat, price -> Double? in
+        Driver.combineLatest(vatSignal, priceSignal) { (vat: Double?, price: Double) -> Double? in
             guard let vat = vat else { return nil }
             return price * (1 + vat/100)
         }.map { total in
-            total.map { "\($0) USD" } ?? "..."
-        }.asDriver(onErrorJustReturn: "")
-        .drive(totalLabel.rx.text)
+                total.map { "\($0) USD" } ?? "..."
+        }.drive(totalLabel.rx.text)
         .addDisposableTo(disposeBag)
     }
 }
