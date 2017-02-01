@@ -43,8 +43,8 @@ class ViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        countryPicker.dataSource = countriesDataSource
-        countryPicker.delegate = countriesDataSource
+        countryPicker.dataSource = self.countriesDataSource
+        countryPicker.delegate = self.countriesDataSource
         
         let priceSignal = priceSlider.rx.value
             .map { floor(Double($0)) }
@@ -55,12 +55,14 @@ class ViewController: UIViewController {
             .addDisposableTo(disposeBag)
         
         let vatSignal = countriesDataSource.selectedIndex.asObservable()
+        let countriesDataSource = self.countriesDataSource
+        let webservice = self.webservice
             .distinctUntilChanged()
-            .map { [unowned self] index in
-                self.countriesDataSource.countries[index].lowercased()
-            }.flatMap { [unowned self] country in
-                self.webservice.load(vat(country: country)).map { Optional.some($0) }.startWith(nil)
             }.shareReplay(1)
+            .map { index in
+                countriesDataSource.countries[index].lowercased()
+            }.flatMap { country in
+                webservice.load(vat(country: country)).map { Optional.some($0) }.startWith(nil)
         
         vatSignal
             .map { vat in
