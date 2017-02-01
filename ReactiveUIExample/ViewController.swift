@@ -61,7 +61,7 @@ class ViewController: UIViewController {
             .distinctUntilChanged()
             .map { index in
                 countriesDataSource.countries[index].lowercased()
-            }.flatMap { country in
+            }.flatMapLatest { country in
                 webservice.load(vat(country: country)).map { Optional.some($0) }.startWith(nil)
                     .asDriver(onErrorJustReturn: nil)
             }
